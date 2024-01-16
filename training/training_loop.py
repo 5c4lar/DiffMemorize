@@ -19,6 +19,7 @@ import dnnlib
 from torch_utils import distributed as dist
 from torch_utils import training_stats
 from torch_utils import misc
+import wandb
 
 #----------------------------------------------------------------------------
 
@@ -50,6 +51,7 @@ def training_loop(
     ema_mode            = 'mode2',  # Mode for ema, mode1, mode2, or mode3
     data_ratio          = 1,        # Ratio for data size, 50000 / data size
     final_ema           = 0.99929,  # final ema ratio
+    log_wandb           = False,    # Log to wandb
 ):
     # Initialize.
     start_time = time.time()
@@ -135,7 +137,8 @@ def training_loop(
                 labels = labels.to(device)
                 loss = loss_fn(net=ddp, images=images, labels=labels, augment_pipe=augment_pipe)
                 training_stats.report('Loss/loss', loss)
-                loss.sum().mul(loss_scaling / batch_gpu_total).backward()
+                loss = loss.sum().mul(loss_scaling / batch_gpu_total)
+                loss.backward()
 
         # Update weights.
         for g in optimizer.param_groups:
@@ -215,6 +218,9 @@ def training_loop(
                 stats_jsonl = open(os.path.join(run_dir, 'stats.jsonl'), 'at')
             stats_jsonl.write(json.dumps(dict(training_stats.default_collector.as_dict(), timestamp=time.time())) + '\n')
             stats_jsonl.flush()
+            if log_wandb:
+                loss_mean = training_stats.default_collector.as_dict()['Loss/loss']['mean']
+                wandb.log({"train_loss": loss_mean}, step=cur_nimg // 1000)
         dist.update_progress(cur_nimg // 1000, total_kimg)
 
         # Update state.

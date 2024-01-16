@@ -16,6 +16,7 @@ import torch
 import dnnlib
 from torch_utils import distributed as dist
 from training import training_loop
+import wandb
 
 import warnings
 warnings.filterwarnings('ignore', 'Grad strides do not match bucket view strides') # False warning printed by PyTorch 1.12.
@@ -87,6 +88,7 @@ def parse_int_list(s):
 @click.option('--transfer',      help='Transfer learning from network pickle', metavar='PKL|URL',   type=str)
 @click.option('--resume',        help='Resume from previous training state', metavar='PT',          type=str)
 @click.option('-n', '--dry-run', help='Print training options and exit',                            is_flag=True)
+@click.option('--wandb_group',   help='wandb group used for logging',                                       type=str, default=None, show_default=True)
 
 def main(**kwargs):
     """Train diffusion-based generative model using the techniques described in the
@@ -102,9 +104,12 @@ def main(**kwargs):
     opts = dnnlib.EasyDict(kwargs)
     torch.multiprocessing.set_start_method('spawn')
     dist.init()
+    if opts.wandb_group and dist.get_rank() == 0:
+        run = wandb.init(group=opts.wandb_group)
 
     # Initialize config dict.
     c = dnnlib.EasyDict()
+    c.log_wandb=opts.wandb_group is not None
     c.dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=opts.data, use_labels=opts.cond, xflip=opts.xflip, cache=opts.cache)
     c.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, num_workers=opts.workers, prefetch_factor=2)
     c.network_kwargs = dnnlib.EasyDict()
