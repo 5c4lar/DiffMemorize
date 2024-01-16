@@ -102,6 +102,7 @@ def main(**kwargs):
         --data=datasets/cifar10-32x32.zip --cond=1 --arch=ddpmpp
     """
     opts = dnnlib.EasyDict(kwargs)
+    opts.data = f"datasets/cifar10/data_size/cifar10-{opts.data}.zip"
     torch.multiprocessing.set_start_method('spawn')
     dist.init()
     if opts.wandb_group and dist.get_rank() == 0:

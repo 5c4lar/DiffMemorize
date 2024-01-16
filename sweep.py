@@ -19,7 +19,7 @@ sweep_configuration = {
     "name": "sweep",
     "metric": {"goal": "minimize", "name": "train_loss"},
     "parameters": {
-        "data": {"values": [f"datasets/cifar10/data_size/cifar10-{size}.zip" for size in [1000, 2000, 4000, 8000, 16000, 32000]]},
+        "data": {"values": [1000, 2000, 4000, 8000, 16000, 32000]},
         "num-channels": {"values": [8, 16, 32, 64, 128, 256, 512]},
     },
 }
