@@ -16,6 +16,7 @@ import psutil
 import numpy as np
 import torch
 import dnnlib
+from torch.utils.flop_counter import FlopCounterMode
 from torch_utils import distributed as dist
 from torch_utils import training_stats
 from torch_utils import misc
@@ -126,27 +127,51 @@ def training_loop(
     maintenance_time = tick_start_time - start_time
     dist.update_progress(cur_nimg // 1000, total_kimg)
     stats_jsonl = None
+    flop_counter = FlopCounterMode(display=False)
+    flop_per_iter = None
     while True:
+        if flop_per_iter is None:
+            with flop_counter:
+                # Accumulate gradients.
+                optimizer.zero_grad(set_to_none=True)
+                for round_idx in range(num_accumulation_rounds):
+                    with misc.ddp_sync(ddp, (round_idx == num_accumulation_rounds - 1)):
+                        images, labels = next(dataset_iterator)
+                        images = images.to(device).to(torch.float32) / 127.5 - 1
+                        labels = labels.to(device)
+                        loss = loss_fn(net=ddp, images=images, labels=labels, augment_pipe=augment_pipe)
+                        training_stats.report('Loss/loss', loss)
+                        loss = loss.sum().mul(loss_scaling / batch_gpu_total)
+                        loss.backward()
 
-        # Accumulate gradients.
-        optimizer.zero_grad(set_to_none=True)
-        for round_idx in range(num_accumulation_rounds):
-            with misc.ddp_sync(ddp, (round_idx == num_accumulation_rounds - 1)):
-                images, labels = next(dataset_iterator)
-                images = images.to(device).to(torch.float32) / 127.5 - 1
-                labels = labels.to(device)
-                loss = loss_fn(net=ddp, images=images, labels=labels, augment_pipe=augment_pipe)
-                training_stats.report('Loss/loss', loss)
-                loss = loss.sum().mul(loss_scaling / batch_gpu_total)
-                loss.backward()
+                # Update weights.
+                for g in optimizer.param_groups:
+                    g['lr'] = optimizer_kwargs['lr'] * min(cur_nimg / max(lr_rampup_kimg * 1000, 1e-8), 1)
+                for param in net.parameters():
+                    if param.grad is not None:
+                        torch.nan_to_num(param.grad, nan=0, posinf=1e5, neginf=-1e5, out=param.grad)
+                optimizer.step()
+            flop_per_iter = flop_counter.get_total_flops() * dist.get_world_size()
+        else:
+            # Accumulate gradients.
+            optimizer.zero_grad(set_to_none=True)
+            for round_idx in range(num_accumulation_rounds):
+                with misc.ddp_sync(ddp, (round_idx == num_accumulation_rounds - 1)):
+                    images, labels = next(dataset_iterator)
+                    images = images.to(device).to(torch.float32) / 127.5 - 1
+                    labels = labels.to(device)
+                    loss = loss_fn(net=ddp, images=images, labels=labels, augment_pipe=augment_pipe)
+                    training_stats.report('Loss/loss', loss)
+                    loss = loss.sum().mul(loss_scaling / batch_gpu_total)
+                    loss.backward()
 
-        # Update weights.
-        for g in optimizer.param_groups:
-            g['lr'] = optimizer_kwargs['lr'] * min(cur_nimg / max(lr_rampup_kimg * 1000, 1e-8), 1)
-        for param in net.parameters():
-            if param.grad is not None:
-                torch.nan_to_num(param.grad, nan=0, posinf=1e5, neginf=-1e5, out=param.grad)
-        optimizer.step()
+            # Update weights.
+            for g in optimizer.param_groups:
+                g['lr'] = optimizer_kwargs['lr'] * min(cur_nimg / max(lr_rampup_kimg * 1000, 1e-8), 1)
+            for param in net.parameters():
+                if param.grad is not None:
+                    torch.nan_to_num(param.grad, nan=0, posinf=1e5, neginf=-1e5, out=param.grad)
+            optimizer.step()
 
         # Update EMA.
         ema_halflife_nimg = ema_halflife_kimg * 1000
@@ -184,6 +209,7 @@ def training_loop(
         fields += [f"cpumem {training_stats.report0('Resources/cpu_mem_gb', psutil.Process(os.getpid()).memory_info().rss / 2**30):<6.2f}"]
         fields += [f"gpumem {training_stats.report0('Resources/peak_gpu_mem_gb', torch.cuda.max_memory_allocated(device) / 2**30):<6.2f}"]
         fields += [f"reserved {training_stats.report0('Resources/peak_gpu_mem_reserved_gb', torch.cuda.max_memory_reserved(device) / 2**30):<6.2f}"]
+        fields += [f"flop {training_stats.report0('FLOP/flop', flop_per_iter * (cur_nimg / batch_size)):<12.2e}"]
         torch.cuda.reset_peak_memory_stats()
         dist.print0(' '.join(fields))
 
@@ -220,7 +246,8 @@ def training_loop(
             stats_jsonl.flush()
             if log_wandb:
                 loss_mean = training_stats.default_collector.as_dict()['Loss/loss']['mean']
-                wandb.log({"train_loss": loss_mean}, step=cur_nimg // 1000)
+                wandb.log({"train_loss": loss_mean}, step=cur_nimg // batch_size)
+                wandb.log({"flop": flop_per_iter * (cur_nimg // batch_size)}, step=cur_nimg // batch_size)
         dist.update_progress(cur_nimg // 1000, total_kimg)
 
         # Update state.
