@@ -116,9 +116,10 @@ def training_loop(
         optimizer.load_state_dict(data['optimizer_state'])
         del data # conserve memory
 
+    total_params = sum(p.numel() for p in net.parameters())
     # Train.
     dist.print0(f'Training for {total_kimg} kimg...')
-    dist.print0(f'Training parameters: dataset_size: {len(dataset_obj)}, data_ratio: {data_ratio}, lr_rampup_kimg: {lr_rampup_kimg}, ema_halflife_kimg: {ema_halflife_kimg}, and ema mode: {ema_mode}')
+    dist.print0(f'Training parameters: model_parameters: {total_params}, dataset_size: {len(dataset_obj)}, data_ratio: {data_ratio}, lr_rampup_kimg: {lr_rampup_kimg}, ema_halflife_kimg: {ema_halflife_kimg}, and ema mode: {ema_mode}')
     dist.print0()
     cur_nimg = resume_kimg * 1000
     cur_tick = 0
