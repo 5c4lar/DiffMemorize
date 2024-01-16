@@ -14,7 +14,7 @@ import wandb
 # Define sweep config
 sweep_configuration = {
     "program": "train.py",
-    "command": ["/usr/bin/env", "torchrun", "--standalone", "--nproc_per_node=4", "train.py", '--outdir=logs', '--cond=0', '--arch=ddpmpp', '--augment=0.0', '--window-size=0.0', '--precond=vp', '--seed=1024', '--duration=2000', '--num-blocks=2', '--fp16=True', '--lr=2e-4', '--batch=512', '--wandb_group=width', '${args}'],
+    "command": ["/usr/bin/env", "torchrun", "--standalone", "--nproc_per_node=1", "train.py", '--outdir=logs', '--cond=0', '--arch=ddpmpp', '--augment=0.0', '--window-size=0.0', '--precond=vp', '--seed=1024', '--duration=2000', '--num-blocks=2', '--fp16=True', '--lr=2e-4', '--batch=512', '--wandb_group=width', '${args}'],
     "method": "grid",
     "name": "sweep",
     "metric": {"goal": "minimize", "name": "train_loss"},
@@ -25,10 +25,10 @@ sweep_configuration = {
 }
 sweep_id = wandb.sweep(sweep_configuration, project="DiffusionUnlearning")
 
-# print(sweep_id)
+print(sweep_id)
 #----------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    wandb.agent(sweep_id)
+# if __name__ == "__main__":
+#     wandb.agent(sweep_id)
 
 #----------------------------------------------------------------------------
