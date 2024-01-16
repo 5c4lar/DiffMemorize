@@ -14,7 +14,7 @@ import wandb
 # Define sweep config
 sweep_configuration = {
     "program": "train.py",
-    "command": ["/usr/bin/env", "torchrun", "--standalone", "--nproc_per_node=4", "train.py", '--outdir=logs', '--cond=0', '--arch=ddpmpp', '--augment=0.0', '--window-size=0.0', '--precond=vp', '--seed=1024', '--duration=200', '--num-blocks=2', '--fp16=True', '--lr=2e-4', '--batch=512', '--wandb_group=width', '${args}'],
+    "command": ["/usr/bin/env", "torchrun", "--standalone", "--nproc_per_node=auto", "train.py", '--outdir=logs', '--cond=0', '--arch=ddpmpp', '--augment=0.0', '--window-size=0.0', '--precond=vp', '--seed=1024', '--duration=2000', '--num-blocks=2', '--fp16=True', '--lr=2e-4', '--batch=512', '--wandb_group=width', '${args}'],
     "method": "grid",
     "name": "sweep",
     "metric": {"goal": "minimize", "name": "train_loss"},
