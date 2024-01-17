@@ -9,7 +9,7 @@ Here we use the argument `$size` to control the size, i.e., $|\mathcal{D}|$ of t
 
 Run the following command to train a diffusion model on $\mathcal{D}$ with different spatial resolutions. After training, the saved model snapshots will be saved to `outdir=$savedir/00000-cifar10-$resolution'x'$resolution'-'$size-uncond-ddpmpp-vp-gpus8-batch512-fp32`.
 ```
-torchrun --standalone --nproc_per_node=8 train.py --outdir=$savedir --data=datasets/cifar10/data_dimension/cifar10-$resolution'x'$resolution'-'$size.zip --cond=0 --arch=ddpmpp --augment=0.0 --window-size=0.0 --precond=vp --seed=1024 --duration=2000 --num-blocks=2 --num-channels=128 --fp16=False --lr=2e-4 --attn-resolutions=$attn_resolutions
+torchrun --standalone --nproc_per_node=8 train.py --outdir=$savedir --data=datasets/cifar10/data_dimension/cifar10-$resolution'x'$resolution'-'$size.zip --cond=0 --arch=ddpmpp --augment=0.0 --window-size=0.0 --precond=vp --seed=1024 --duration=2000 --num-blocks=2 --num-channels=128 --dtype=fp32 --lr=2e-4 --attn-resolutions=$attn_resolutions
 ```
 
 Here `$attn_resolutions` refers to the location of attention mechanism in the model architecture. We take the following values to ensure the model architectures are the same.
@@ -27,7 +27,7 @@ Here we use the argument `$num_classes` to control the number of classes, i.e. $
 
 Then run the following command to train a diffusion model on $\mathcal{D}$ with different $C$. After training, the saved model snapshots will be saved to `outdir=$savedir/00000-cifar10-$num_classes-$size-uncond-ddpmpp-vp-gpus8-batch512-fp32`.
 ```
-torchrun --standalone --nproc_per_node=8 train.py --outdir=$savedir --data=datasets/cifar10/data_diversity/cifar10-$num_classes-$size.zip --cond=0 --arch=ddpmpp --augment=0.0 --window-size=0.0 --precond=vp --seed=1024 --duration=2000 --num-blocks=2 --num-channels=128 --fp16=False --lr=2e-4
+torchrun --standalone --nproc_per_node=8 train.py --outdir=$savedir --data=datasets/cifar10/data_diversity/cifar10-$num_classes-$size.zip --cond=0 --arch=ddpmpp --augment=0.0 --window-size=0.0 --precond=vp --seed=1024 --duration=2000 --num-blocks=2 --num-channels=128 --dtype=fp32 --lr=2e-4
 ```
 
 ## Intra-diversity
@@ -48,5 +48,5 @@ Here `$alpha` represents the proportion of ImageNet data in the constructed trai
 
 Run the following command to train a diffusion model on $\mathcal{D}$ with different $C$. After training, the saved model snapshots will be saved to `outdir=$savedir/00000-mixture_$alpha_$size-uncond-ddpmpp-vp-gpus8-batch512-fp32`.
 ```
-torchrun --standalone --nproc_per_node=8 train.py --outdir=$savedir --data=datasets/cifar10/intra_diversity/mixture_$alpha'_'$size.zip --cond=0 --arch=ddpmpp --augment=0.0 --window-size=0.0 --precond=vp --seed=1024 --duration=2000 --num-blocks=2 --num-channels=128 --fp16=False --lr=2e-4
+torchrun --standalone --nproc_per_node=8 train.py --outdir=$savedir --data=datasets/cifar10/intra_diversity/mixture_$alpha'_'$size.zip --cond=0 --arch=ddpmpp --augment=0.0 --window-size=0.0 --precond=vp --seed=1024 --duration=2000 --num-blocks=2 --num-channels=128 --dtype=fp32 --lr=2e-4
 ```
