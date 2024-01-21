@@ -344,8 +344,9 @@ class UNetBlock(torch.nn.Module):
                 )
                 .unbind(2)
             )
-            w = AttentionOp.apply(q, k)
-            a = torch.einsum("nqk,nck->ncq", w, v)
+            # w = AttentionOp.apply(q, k)
+            # a = torch.einsum("nqk,nck->ncq", w, v)
+            a = torch.nn.functional.scaled_dot_product_attention(q, k, v)
             x = self.proj(a.reshape(*x.shape)).add_(x)
             x = x * self.skip_scale
         return x
