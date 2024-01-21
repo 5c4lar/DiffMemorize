@@ -448,7 +448,7 @@ def main(**kwargs):
     else:
         assert opts.arch == "adm"
         c.network_kwargs.update(
-            model_type="DhariwalUNet", model_channels=192, channel_mult=[1, 2, 3, 4]
+            model_type="DhariwalUNet", model_channels=opts.num_channels, channel_mult=[1, 2, 3, 4]
         )
 
     # Preconditioning & loss function.
