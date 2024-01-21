@@ -343,7 +343,7 @@ def main(**kwargs):
     """
     opts = dnnlib.EasyDict(kwargs)
     group = f"{opts.data}_{opts.num_channels}"
-    opts.data = f"datasets/cifar10/data_size/cifar10-{opts.data}.zip"
+    # opts.data = f"datasets/cifar10/data_size/cifar10-{opts.data}.zip"
     torch.multiprocessing.set_start_method("spawn")
     dist.init()
     if opts.wandb_group and dist.get_rank() == 0:
