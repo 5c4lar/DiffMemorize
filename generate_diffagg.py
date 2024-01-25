@@ -167,11 +167,11 @@ def diffagg_sampler(
         x_hat = x_cur + (t_hat**2 - t_cur**2).sqrt() * S_noise * randn_like(x_cur)
 
         vs, traces = vmodel_vmap(params, buffers, x_hat, t_hat, t_next, i, class_labels, randn_like(x_cur))
-        x_deltas = x_curs - x_nexts
+        x_deltas = x_hat - x_curs
         scores = (x_hat[None] - vs) / t_hat
         logpis_delta = torch.einsum("bdchw, bdchw -> bd", x_deltas, scores)
         logpis_x = logpis + logpis_delta
-        coeff = weights[:, None] * torch.exp(logpis_x - logpis_x.max(dim=0, keepdim=True).values)
+        coeff = weights[:, None] * torch.exp(logpis_x - logsumexp_tensor(logpis_x, axis=0, b=weights[:, None], keep_dims=True))
         v = torch.einsum("bdchw, bd -> dchw", vs, coeff)
         x_next = x_hat + (t_next - t_hat) * v
         x_nexts = x_hat + (t_next - t_hat) * vs
